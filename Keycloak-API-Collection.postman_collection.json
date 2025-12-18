@@ -1,0 +1,1992 @@
+{
+	"info": {
+		"_postman_id": "keycloak-api-collection-2024",
+		"name": "Keycloak API Collection",
+		"description": "Complete Keycloak Admin and OAuth API collection with all common operations",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{ADMIN_ACCESS_TOKEN}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-refresh token before each request",
+					"const tokenUrl = pm.environment.get(\"KEYCLOAK_URL\") + \"/realms/\" + pm.environment.get(\"REALM\") + \"/protocol/openid-connect/token\";",
+					"",
+					"// Skip token refresh for token endpoint itself",
+					"if (pm.request.url.toString().includes('/protocol/openid-connect/token')) {",
+					"    return;",
+					"}",
+					"",
+					"pm.sendRequest({",
+					"    url: tokenUrl,",
+					"    method: 'POST',",
+					"    header: 'Content-Type: application/x-www-form-urlencoded',",
+					"    body: {",
+					"        mode: 'urlencoded',",
+					"        urlencoded: [",
+					"            {key: \"client_id\", value: pm.environment.get(\"CLIENT_ID\")},",
+					"            {key: \"username\", value: pm.environment.get(\"ADMIN_USERNAME\")},",
+					"            {key: \"password\", value: pm.environment.get(\"ADMIN_PASSWORD\")},",
+					"            {key: \"grant_type\", value: \"password\"}",
+					"        ]",
+					"    }",
+					"}, function (err, res) {",
+					"    if (!err && res.code === 200) {",
+					"        pm.environment.set(\"ADMIN_ACCESS_TOKEN\", res.json().access_token);",
+					"        pm.environment.set(\"REFRESH_TOKEN\", res.json().refresh_token);",
+					"    }",
+					"});"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Extract ID from Location header for POST requests",
+					"if (pm.response.code === 201) {",
+					"    const location = pm.response.headers.get(\"Location\");",
+					"    if (location) {",
+					"        const id = location.split(\"/\").pop();",
+					"        pm.environment.set(\"LAST_CREATED_ID\", id);",
+					"        console.log(\"Created resource ID: \" + id);",
+					"    }",
+					"}"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "01 - Authentication",
+			"item": [
+				{
+					"name": "Get Admin Token (Password Grant)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    pm.environment.set(\"ADMIN_ACCESS_TOKEN\", jsonData.access_token);",
+									"    pm.environment.set(\"REFRESH_TOKEN\", jsonData.refresh_token);",
+									"    console.log(\"Access token saved to environment\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "client_id",
+									"value": "{{CLIENT_ID}}",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "{{ADMIN_USERNAME}}",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "{{ADMIN_PASSWORD}}",
+									"type": "text"
+								},
+								{
+									"key": "grant_type",
+									"value": "password",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/realms/{{REALM}}/protocol/openid-connect/token",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"realms",
+								"{{REALM}}",
+								"protocol",
+								"openid-connect",
+								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Token (Client Credentials)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "client_id",
+									"value": "{{CLIENT_ID}}",
+									"type": "text"
+								},
+								{
+									"key": "client_secret",
+									"value": "{{CLIENT_SECRET}}",
+									"type": "text"
+								},
+								{
+									"key": "grant_type",
+									"value": "client_credentials",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/realms/{{REALM}}/protocol/openid-connect/token",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"realms",
+								"{{REALM}}",
+								"protocol",
+								"openid-connect",
+								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "client_id",
+									"value": "{{CLIENT_ID}}",
+									"type": "text"
+								},
+								{
+									"key": "client_secret",
+									"value": "{{CLIENT_SECRET}}",
+									"type": "text"
+								},
+								{
+									"key": "grant_type",
+									"value": "refresh_token",
+									"type": "text"
+								},
+								{
+									"key": "refresh_token",
+									"value": "{{REFRESH_TOKEN}}",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/realms/{{REALM}}/protocol/openid-connect/token",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"realms",
+								"{{REALM}}",
+								"protocol",
+								"openid-connect",
+								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/realms/{{REALM}}/protocol/openid-connect/userinfo",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"realms",
+								"{{REALM}}",
+								"protocol",
+								"openid-connect",
+								"userinfo"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Introspect Token",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "client_id",
+									"value": "{{CLIENT_ID}}",
+									"type": "text"
+								},
+								{
+									"key": "client_secret",
+									"value": "{{CLIENT_SECRET}}",
+									"type": "text"
+								},
+								{
+									"key": "token",
+									"value": "{{ADMIN_ACCESS_TOKEN}}",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/realms/{{REALM}}/protocol/openid-connect/token/introspect",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"realms",
+								"{{REALM}}",
+								"protocol",
+								"openid-connect",
+								"token",
+								"introspect"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "client_id",
+									"value": "{{CLIENT_ID}}",
+									"type": "text"
+								},
+								{
+									"key": "client_secret",
+									"value": "{{CLIENT_SECRET}}",
+									"type": "text"
+								},
+								{
+									"key": "refresh_token",
+									"value": "{{REFRESH_TOKEN}}",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/realms/{{REALM}}/protocol/openid-connect/logout",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"realms",
+								"{{REALM}}",
+								"protocol",
+								"openid-connect",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "02 - Realm Management",
+			"item": [
+				{
+					"name": "Get All Realms",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Specific Realm",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Realm",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"realm\": \"my-new-realm\",\n    \"enabled\": true,\n    \"displayName\": \"My New Realm\",\n    \"registrationAllowed\": true,\n    \"loginWithEmailAllowed\": true,\n    \"duplicateEmailsAllowed\": false,\n    \"resetPasswordAllowed\": true,\n    \"editUsernameAllowed\": false,\n    \"bruteForceProtected\": true\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Realm",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"realm\": \"{{REALM}}\",\n    \"enabled\": true,\n    \"displayName\": \"Updated Realm Name\"\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Realm",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "03 - User Management",
+			"item": [
+				{
+					"name": "Get All Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Users with Pagination",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users?first=0&max=20",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users"
+							],
+							"query": [
+								{
+									"key": "first",
+									"value": "0"
+								},
+								{
+									"key": "max",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users?search=john&first=0&max=20",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "john"
+								},
+								{
+									"key": "first",
+									"value": "0"
+								},
+								{
+									"key": "max",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by Username",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users?username=john.doe&exact=true",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users"
+							],
+							"query": [
+								{
+									"key": "username",
+									"value": "john.doe"
+								},
+								{
+									"key": "exact",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const location = pm.response.headers.get(\"Location\");",
+									"    if (location) {",
+									"        const userId = location.split(\"/\").pop();",
+									"        pm.environment.set(\"USER_ID\", userId);",
+									"        console.log(\"Created User ID: \" + userId);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"john.doe\",\n    \"email\": \"john.doe@example.com\",\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"enabled\": true,\n    \"emailVerified\": true,\n    \"credentials\": [\n        {\n            \"type\": \"password\",\n            \"value\": \"Password123!\",\n            \"temporary\": false\n        }\n    ],\n    \"attributes\": {\n        \"department\": [\"IT\"],\n        \"employeeId\": [\"12345\"]\n    }\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe Updated\",\n    \"email\": \"john.updated@example.com\",\n    \"enabled\": true\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reset User Password",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"password\",\n    \"value\": \"NewPassword123!\",\n    \"temporary\": false\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/reset-password",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"reset-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Send Verification Email",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/send-verify-email",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"send-verify-email"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Execute Actions Email",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\"UPDATE_PASSWORD\", \"VERIFY_EMAIL\"]"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/execute-actions-email",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"execute-actions-email"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Sessions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/sessions",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"sessions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout User (All Sessions)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/logout",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Count",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/count",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"count"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "04 - Client Management",
+			"item": [
+				{
+					"name": "Get All Clients",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/clients",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"clients"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Client by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/clients/{{CLIENT_UUID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"clients",
+								"{{CLIENT_UUID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const location = pm.response.headers.get(\"Location\");",
+									"    if (location) {",
+									"        const clientUuid = location.split(\"/\").pop();",
+									"        pm.environment.set(\"CLIENT_UUID\", clientUuid);",
+									"        console.log(\"Created Client UUID: \" + clientUuid);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"clientId\": \"my-app\",\n    \"name\": \"My Application\",\n    \"enabled\": true,\n    \"protocol\": \"openid-connect\",\n    \"publicClient\": false,\n    \"bearerOnly\": false,\n    \"standardFlowEnabled\": true,\n    \"directAccessGrantsEnabled\": true,\n    \"serviceAccountsEnabled\": true,\n    \"redirectUris\": [\"http://localhost:3000/*\"],\n    \"webOrigins\": [\"http://localhost:3000\"],\n    \"attributes\": {\n        \"access.token.lifespan\": \"1800\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/clients",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"clients"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Client",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"clientId\": \"my-app\",\n    \"enabled\": true,\n    \"redirectUris\": [\"http://localhost:3000/*\", \"http://localhost:4200/*\"]\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/clients/{{CLIENT_UUID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"clients",
+								"{{CLIENT_UUID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Client",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/clients/{{CLIENT_UUID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"clients",
+								"{{CLIENT_UUID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Client Secret",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/clients/{{CLIENT_UUID}}/client-secret",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"clients",
+								"{{CLIENT_UUID}}",
+								"client-secret"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Regenerate Client Secret",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/clients/{{CLIENT_UUID}}/client-secret",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"clients",
+								"{{CLIENT_UUID}}",
+								"client-secret"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Service Account User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/clients/{{CLIENT_UUID}}/service-account-user",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"clients",
+								"{{CLIENT_UUID}}",
+								"service-account-user"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "05 - Role Management",
+			"item": [
+				{
+					"name": "Get All Realm Roles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/roles",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"roles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Realm Role by Name",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/roles/{{ROLE_NAME}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"roles",
+								"{{ROLE_NAME}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Realm Role",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"admin\",\n    \"description\": \"Administrator role\",\n    \"composite\": false,\n    \"clientRole\": false\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/roles",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"roles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Realm Role",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"admin\",\n    \"description\": \"Updated administrator role\"\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/roles/{{ROLE_NAME}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"roles",
+								"{{ROLE_NAME}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Realm Role",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/roles/{{ROLE_NAME}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"roles",
+								"{{ROLE_NAME}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Client Roles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/clients/{{CLIENT_UUID}}/roles",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"clients",
+								"{{CLIENT_UUID}}",
+								"roles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client Role",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"app-admin\",\n    \"description\": \"Application administrator role\"\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/clients/{{CLIENT_UUID}}/roles",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"clients",
+								"{{CLIENT_UUID}}",
+								"roles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Realm Roles to User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"id\": \"{{ROLE_ID}}\",\n        \"name\": \"admin\"\n    }\n]"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/role-mappings/realm",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"role-mappings",
+								"realm"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Realm Roles from User",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"id\": \"{{ROLE_ID}}\",\n        \"name\": \"admin\"\n    }\n]"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/role-mappings/realm",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"role-mappings",
+								"realm"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Realm Role Mappings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/role-mappings/realm",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"role-mappings",
+								"realm"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Client Roles to User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"id\": \"{{ROLE_ID}}\",\n        \"name\": \"app-admin\"\n    }\n]"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/role-mappings/clients/{{CLIENT_UUID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"role-mappings",
+								"clients",
+								"{{CLIENT_UUID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Client Role Mappings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/role-mappings/clients/{{CLIENT_UUID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"role-mappings",
+								"clients",
+								"{{CLIENT_UUID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "06 - Group Management",
+			"item": [
+				{
+					"name": "Get All Groups",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/groups",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"groups"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Group by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/groups/{{GROUP_ID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"groups",
+								"{{GROUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const location = pm.response.headers.get(\"Location\");",
+									"    if (location) {",
+									"        const groupId = location.split(\"/\").pop();",
+									"        pm.environment.set(\"GROUP_ID\", groupId);",
+									"        console.log(\"Created Group ID: \" + groupId);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"developers\",\n    \"attributes\": {\n        \"department\": [\"Engineering\"]\n    }\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/groups",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"groups"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Group",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"senior-developers\",\n    \"attributes\": {\n        \"department\": [\"Engineering\"],\n        \"level\": [\"Senior\"]\n    }\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/groups/{{GROUP_ID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"groups",
+								"{{GROUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Group",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/groups/{{GROUP_ID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"groups",
+								"{{GROUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add User to Group",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/groups/{{GROUP_ID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"groups",
+								"{{GROUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Remove User from Group",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/groups/{{GROUP_ID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"groups",
+								"{{GROUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Groups",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/users/{{USER_ID}}/groups",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"users",
+								"{{USER_ID}}",
+								"groups"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Group Members",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/groups/{{GROUP_ID}}/members",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"groups",
+								"{{GROUP_ID}}",
+								"members"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "07 - Identity Providers",
+			"item": [
+				{
+					"name": "Get All Identity Providers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/identity-provider/instances",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"identity-provider",
+								"instances"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Identity Provider (Google)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"alias\": \"google\",\n    \"providerId\": \"google\",\n    \"enabled\": true,\n    \"config\": {\n        \"clientId\": \"your-google-client-id\",\n        \"clientSecret\": \"your-google-client-secret\",\n        \"defaultScope\": \"openid profile email\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/identity-provider/instances",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"identity-provider",
+								"instances"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Identity Provider",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"alias\": \"google\",\n    \"enabled\": true,\n    \"config\": {\n        \"clientId\": \"updated-client-id\",\n        \"clientSecret\": \"updated-client-secret\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/identity-provider/instances/{{IDP_ALIAS}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"identity-provider",
+								"instances",
+								"{{IDP_ALIAS}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Identity Provider",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/identity-provider/instances/{{IDP_ALIAS}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"identity-provider",
+								"instances",
+								"{{IDP_ALIAS}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "08 - Sessions",
+			"item": [
+				{
+					"name": "Get Active Sessions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/client-session-stats",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"client-session-stats"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Session",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/sessions/{{SESSION_ID}}",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"sessions",
+								"{{SESSION_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "09 - Events",
+			"item": [
+				{
+					"name": "Get Events",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/events?type=LOGIN&first=0&max=100",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"events"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "LOGIN"
+								},
+								{
+									"key": "first",
+									"value": "0"
+								},
+								{
+									"key": "max",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Admin Events",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/admin-events?first=0&max=100",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"admin-events"
+							],
+							"query": [
+								{
+									"key": "first",
+									"value": "0"
+								},
+								{
+									"key": "max",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Clear Events",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/events",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"events"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "10 - Client Scopes",
+			"item": [
+				{
+					"name": "Get All Client Scopes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/client-scopes",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"client-scopes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client Scope",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"custom-scope\",\n    \"description\": \"Custom scope for specific claims\",\n    \"protocol\": \"openid-connect\",\n    \"attributes\": {\n        \"include.in.token.scope\": \"true\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{KEYCLOAK_URL}}/admin/realms/{{REALM}}/client-scopes",
+							"host": [
+								"{{KEYCLOAK_URL}}"
+							],
+							"path": [
+								"admin",
+								"realms",
+								"{{REALM}}",
+								"client-scopes"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "KEYCLOAK_URL",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "REALM",
+			"value": "master",
+			"type": "string"
+		},
+		{
+			"key": "ADMIN_USERNAME",
+			"value": "admin",
+			"type": "string"
+		},
+		{
+			"key": "ADMIN_PASSWORD",
+			"value": "admin",
+			"type": "string"
+		},
+		{
+			"key": "CLIENT_ID",
+			"value": "admin-cli",
+			"type": "string"
+		},
+		{
+			"key": "CLIENT_SECRET",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "ADMIN_ACCESS_TOKEN",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "REFRESH_TOKEN",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "USER_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "CLIENT_UUID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "GROUP_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "ROLE_NAME",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "ROLE_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "SESSION_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "IDP_ALIAS",
+			"value": "google",
+			"type": "string"
+		}
+	]
+}

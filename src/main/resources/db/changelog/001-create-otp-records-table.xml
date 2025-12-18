@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="001-create-otp-records-table" author="keycloak-auth-service">
+        <comment>Create otp_records table for OTP management</comment>
+
+        <createTable tableName="otp_records">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="username" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="otp_code" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="valid_until" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="used" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="attempts" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="used_at" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="otp_records"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="001-create-otp-records-indexes" author="keycloak-auth-service">
+        <comment>Create indexes for otp_records table</comment>
+
+        <createIndex tableName="otp_records" indexName="idx_otp_username">
+            <column name="username"/>
+        </createIndex>
+
+        <createIndex tableName="otp_records" indexName="idx_otp_username_valid">
+            <column name="username"/>
+            <column name="used"/>
+            <column name="valid_until"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="otp_records" indexName="idx_otp_username"/>
+            <dropIndex tableName="otp_records" indexName="idx_otp_username_valid"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

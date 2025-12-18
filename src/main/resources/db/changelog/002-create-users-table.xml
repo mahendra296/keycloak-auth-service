@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="002-create-users-table" author="keycloak-auth-service">
+        <comment>Create users table for user management with Keycloak integration</comment>
+
+        <createTable tableName="users">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="keycloak_user_id" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="username" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="first_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="phone" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="address" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="city" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="country" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="postal_code" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sync_status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="users"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="002-create-users-indexes" author="keycloak-auth-service">
+        <comment>Create indexes for users table</comment>
+
+        <createIndex tableName="users" indexName="idx_user_keycloak_id" unique="true">
+            <column name="keycloak_user_id"/>
+        </createIndex>
+
+        <createIndex tableName="users" indexName="idx_user_email" unique="true">
+            <column name="email"/>
+        </createIndex>
+
+        <createIndex tableName="users" indexName="idx_user_username" unique="true">
+            <column name="username"/>
+        </createIndex>
+
+        <createIndex tableName="users" indexName="idx_user_status">
+            <column name="status"/>
+        </createIndex>
+
+        <createIndex tableName="users" indexName="idx_user_sync_status">
+            <column name="sync_status"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="users" indexName="idx_user_keycloak_id"/>
+            <dropIndex tableName="users" indexName="idx_user_email"/>
+            <dropIndex tableName="users" indexName="idx_user_username"/>
+            <dropIndex tableName="users" indexName="idx_user_status"/>
+            <dropIndex tableName="users" indexName="idx_user_sync_status"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
